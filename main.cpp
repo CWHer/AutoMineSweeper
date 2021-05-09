@@ -16,10 +16,10 @@ private:
 
     // generate mines
     //  excluding first click
-    void genMines(Pos first_click)
+    void genMines(Block first_click)
     {
         // generate mines
-        vector<Pos> mines;
+        vector<Block> mines;
         for (int i = 0; i < height; ++i)
             for (int j = 0; j < width; ++j)
                 if (i != first_click.first &&
@@ -44,7 +44,7 @@ private:
     }
 
     // visit all neighbors of '0'
-    void dfsVisit(Pos cur)
+    void dfsVisit(Block cur)
     {
         int x = cur.first, y = cur.second;
         for (int i = max(x - 1, 0); i <= min(x + 1, height - 1); ++i)
@@ -113,7 +113,7 @@ public:
         if (!fin.is_open())
             printError("File Not Found!");
 
-        vector<Pos> points;
+        vector<Block> points;
         int x, y;
         while (fin >> x >> y)
             points.emplace_back(make_pair(x, y));
@@ -145,7 +145,7 @@ public:
         if (!fin.is_open())
             printError("File Not Found!");
 
-        vector<Pos> points;
+        vector<Block> points;
         int x, y;
         while (fin >> x >> y)
             points.emplace_back(make_pair(x, y));
@@ -176,6 +176,7 @@ Solver solver;
 Designer designer;
 int main()
 {
+    std::ios::sync_with_stdio(false);
     int T = 1000, win_cnt = 0;
     for (int i = 1; i <= T; ++i)
     {

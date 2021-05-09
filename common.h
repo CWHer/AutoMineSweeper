@@ -23,6 +23,6 @@ using std::string;
 using std::time;
 using std::vector;
 
-typedef pair<int, int> Pos;
+typedef pair<int, int> Block;
 
 #endif
