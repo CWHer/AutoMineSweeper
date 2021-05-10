@@ -12,6 +12,7 @@
 #include <random>
 #include <ctime>
 #include <iomanip>
+#include <cmath>
 
 using std::ifstream;
 using std::make_pair;

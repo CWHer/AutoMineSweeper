@@ -10,7 +10,9 @@ private:
     static const int UNKNOWN = 64;
 
     bool is_empty;
-    int mine_number;
+    int known_cnt;
+    int mine_cnt;    //current
+    int mine_number; //total
     int width, height;
     vector<vector<int>> board;
     vector<Block> next_steps; // click these
@@ -26,11 +28,14 @@ private:
 
     // whether it has unknown nearby
     vector<vector<bool>> has_unknown;
-    // whether it has known(not includeing flag) nearby
+    // whether it has known(not including flag) nearby
     vector<vector<bool>> has_known;
 
     // store independent partitions of borders
     vector<vector<Block>> border_partition;
+
+    // probability of having MINE
+    vector<vector<double>> mine_prob;
 
 private:
     inline bool inBoard(int x, int y)
@@ -123,20 +128,41 @@ private:
         }
     }
 
-    // randomly choose next position
+    // find next block with minimum mine_prob
     void randomNext()
     {
-        printWarning("Random Step!");
-        vector<Block> points;
+        double min_prob = 1;
+        static const double eps = 1e-8;
         for (int i = 0; i < height; ++i)
             for (int j = 0; j < width; ++j)
                 if (board[i][j] == UNKNOWN)
-                    points.emplace_back(make_pair(i, j));
-        if (points.empty())
-            printError("No Unknown Blocks But Not Terminate");
-        std::shuffle(points.begin(), points.end(),
-                     std::mt19937(time(0)));
-        next_steps.emplace_back(points.front());
+                    min_prob = min(min_prob,
+                                   mine_prob[i][j]);
+
+        for (int i = 0; i < height; ++i)
+            for (int j = 0; j < width; ++j)
+                if (board[i][j] == UNKNOWN &&
+                    std::fabs(min_prob -
+                              mine_prob[i][j]) < eps)
+                {
+                    next_steps.emplace_back(
+                        make_pair(i, j));
+                    printDebug("Choose a Block with Probability " +
+                               std::to_string(min_prob));
+                    return;
+                }
+
+        // printWarning("Random Step!");
+        // vector<Block> points;
+        // for (int i = 0; i < height; ++i)
+        //     for (int j = 0; j < width; ++j)
+        //         if (board[i][j] == UNKNOWN)
+        //             points.emplace_back(make_pair(i, j));
+        // if (points.empty())
+        //     printError("No Unknown Blocks But Not Terminate");
+        // std::shuffle(points.begin(), points.end(),
+        //              std::mt19937(time(0)));
+        // next_steps.emplace_back(points.front());
     }
 
     // traverse connected borders
@@ -187,15 +213,128 @@ private:
             {
                 border_partition.emplace_back(vector<Block>());
                 dfsPartition(it.first, it.second, is_border);
+                std::sort(border_partition.back().begin(),
+                          border_partition.back().end());
             }
-
+        std::shuffle(border_partition.begin(),
+                     border_partition.end(),
+                     std::mt19937(time(0)));
+        // debug info
         {
             printDebug("The Number of Border Partition is " +
                        std::to_string(border_partition.size()));
-            int mx = 0;
+            int max_size = 0;
             for (const auto &it : border_partition)
-                mx = max(mx, (int)it.size());
-            printDebug("With Max Size " + std::to_string(mx));
+                max_size = max(max_size, (int)it.size());
+            printDebug("With Max Size " + std::to_string(max_size));
+        }
+    }
+
+    // MINE + FLAG should <= known info
+    // MINE + FLAG + UNKNOWN should >= known info
+    bool isFeasible(int cur_x, int cur_y)
+    {
+        int stat1 = MINE | FLAG;
+        int stat2 = stat1 | UNKNOWN;
+        for (int x = max(cur_x - 1, 0); x <= min(cur_x + 1, height - 1); ++x)
+            for (int y = max(cur_y - 1, 0); y <= min(cur_y + 1, width - 1); ++y)
+                if (board[x][y] <= 8 && board[x][y] > 0)
+                {
+                    int cnt1 = 0, cnt2 = 0;
+                    for (int i = max(x - 1, 0); i <= min(x + 1, height - 1); ++i)
+                        for (int j = max(y - 1, 0); j <= min(y + 1, width - 1); ++j)
+                        {
+                            cnt1 += !!(board[i][j] & stat1);
+                            cnt2 += !!(board[i][j] & stat2);
+                        }
+                    if (cnt1 > board[x][y] ||
+                        cnt2 < board[x][y])
+                        return false;
+                }
+        return true;
+    }
+
+    // use dfs to search all feasible solutions
+    //  in each border partition
+    // border_partition[blk][k]
+    void dfsBorderMines(int blk, int k,
+                        long long &total)
+    {
+        if (k == border_partition[blk].size())
+        {
+            total++;
+            return;
+        }
+
+        Block cur = border_partition[blk][k];
+        int x = cur.first;
+        int y = cur.second;
+
+        int pre = total;
+        board[x][y] = MINE;
+        if (isFeasible(x, y)) // feasible prune
+        {
+            dfsBorderMines(blk, k + 1, total);
+            mine_prob[x][y] += total - pre;
+        }
+
+        board[x][y] = 0;
+        if (isFeasible(x, y)) // feasible prune
+            dfsBorderMines(blk, k + 1, total);
+
+        board[x][y] = UNKNOWN;
+    }
+
+    // calculate probability of having MINE
+    //  on each border block
+    void calcBorderProb()
+    {
+        divideBorder();
+        if (border_partition.empty())
+            printWarning("No Border!");
+
+        // calculate probability
+        double avg_prob = (mine_number - mine_cnt) * 1.0 /
+                          (width * height - known_cnt - mine_cnt); // not exact
+        double min_prob = 1;
+        double max_prob = 0;
+        mine_prob = vector<vector<double>>(height,
+                                           vector<double>(width, avg_prob));
+        for (int i = 0; i < border_partition.size(); ++i)
+        {
+            long long total = 0;
+            for (const auto &it : border_partition[i])
+                mine_prob[it.first][it.second] = 0;
+            dfsBorderMines(i, 0, total);
+
+            for (const auto &it : border_partition[i])
+            {
+                double prob = mine_prob[it.first][it.second];
+                prob /= total;
+                min_prob = min(min_prob, prob);
+                max_prob = max(max_prob, prob);
+                mine_prob[it.first][it.second] = prob;
+            }
+        }
+        static const double eps = 1e-8;
+        // some block must not be mine
+        if (min_prob < eps)
+        {
+            for (const auto &part : border_partition)
+                for (const auto &it : part)
+                    if (mine_prob[it.first][it.second] < eps)
+                        next_steps.push_back(it);
+            printDebug("Find Empty Blocks");
+        }
+        // some block must be mine
+        if (std::fabs(1 - max_prob) < eps)
+        {
+            for (const auto &part : border_partition)
+                for (const auto &it : part)
+                    if (std::fabs(1 -
+                                  mine_prob[it.first][it.second]) < eps)
+                        next_flags.push_back(it);
+            printDebug("Find Mines");
         }
     }
 
@@ -218,17 +357,22 @@ public:
         has_known = vector<vector<bool>>(height,
                                          vector<bool>(width, false));
         is_empty = true;
+        known_cnt = mine_cnt = 0;
         for (int i = 0; i < height; ++i)
             for (int j = 0; j < width; ++j)
             {
-                fin >> board[i][j];
-                is_empty &= board[i][j] == UNKNOWN;
-                auto &has_what = board[i][j] == UNKNOWN ? has_unknown
-                                                        : has_known;
+                int cur_type;
+                fin >> cur_type;
+                is_empty &= cur_type == UNKNOWN;
+                mine_cnt += cur_type == FLAG;
+                known_cnt += cur_type <= 8;
+                auto &has_what = cur_type == UNKNOWN ? has_unknown
+                                                     : has_known;
                 for (int x = max(i - 1, 0); x <= min(i + 1, height - 1); ++x)
                     for (int y = max(j - 1, 0); y <= min(j + 1, width - 1); ++y)
-                        if (board[i][j] != FLAG)
+                        if (cur_type != FLAG)
                             has_what[x][y] = true;
+                board[i][j] = cur_type;
             }
         fin.close();
     }
@@ -271,17 +415,19 @@ public:
         // detect blocks with sufficient existing mines
         // their remaining must be safe
         detectSafe();
-        if (!next_steps.empty())
-            return;
 
         // detect blocks with sufficient mines + unknown
         // their remaining must be unsafe
         detectUnsafe();
-        if (!next_flags.empty())
+        if (!next_steps.empty() ||
+            !next_flags.empty())
             return;
 
-        divideBorder();
+        // calculate probability of having MINE on border
+        calcBorderProb();
 
-        randomNext();
+        if (next_steps.empty() &&
+            next_flags.empty())
+            randomNext();
     }
 };

@@ -7,7 +7,7 @@
 // modify this to display (or not display) warnings
 const bool ALLOW_WARNING = false;
 // modify this to display (or not display) debug info
-const bool ALLOW_DEBUG = true;
+const bool ALLOW_DEBUG = false;
 
 void printWarning(string msg)
 {
