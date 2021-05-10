@@ -24,6 +24,8 @@ python前端和C++后端
 
   提高正确率
 
+  概率vs推断？
+
 - [ ] Ver0.4
 
   完成python前端，生成地图文本
@@ -80,24 +82,38 @@ python前端和C++后端
 
   位于`solver.hpp`，求解器
 
-  使用了以下方式求解
+  部分函数
+
+  - `divideBlock`
+
+    ~~按照顺时针分解边界（没有正确实现）~~
+
+    本来打算用DP来计数，类似[这个](https://www.luogu.com.cn/problem/P2327)
+
+    但是边界不一定是单链，可能是树，或者更糟糕。就算是链也不一定是直的
+
+    最后还是按照连通块划分了
+
+    ![](img/fig-partition.png)
+
+  使用以下方式求解
 
   1. `detectSafe`
 
      如果一个格子周围的地雷数和自身相等，则未知的全是安全的
-
+  
      使用前缀和优化求和
-
+  
   2. `detectUnsafe`
-
+  
      如果一个格子周围未知的加上现有的地雷数和自身相等，则未知的全是地雷
-
+  
      使用前缀和优化求和
-
+  
   3. `randomNext`
-
+  
      随机选一个
-
+  
   
 
 
@@ -125,3 +141,6 @@ python前端和C++后端
 ### 参考资料
 
 1. [_最强扫雷AI算法详解+源码分享_](https://zhuanlan.zhihu.com/p/136791369)
+2. [_How to Write your own Minesweeper AI_](https://luckytoilet.wordpress.com/2012/12/23/2125/)
+3. [_CS50 Introduction to Artificial Intelligence with Python_](https://cs50.harvard.edu/ai/2020/projects/1/minesweeper/)
+4. [_I created a PERFECT minesweeper AI_](https://www.youtube.com/watch?v=cGUHehFGqBc)

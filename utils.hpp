@@ -6,6 +6,8 @@
 
 // modify this to display (or not display) warnings
 const bool ALLOW_WARNING = false;
+// modify this to display (or not display) debug info
+const bool ALLOW_DEBUG = true;
 
 void printWarning(string msg)
 {
@@ -13,9 +15,15 @@ void printWarning(string msg)
         std::cout << "WARNING: " << msg << std::endl;
 }
 
+void printDebug(string msg)
+{
+    if (ALLOW_DEBUG)
+        std::cout << "DEBUG: " << msg << std::endl;
+}
+
 void printError(string msg)
 {
-    std::cout << msg << std::endl;
+    std::cout << "ERROR: " << msg << std::endl;
     exit(0);
 }
 
