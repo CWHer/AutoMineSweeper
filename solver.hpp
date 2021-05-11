@@ -10,9 +10,9 @@ private:
     static const int UNKNOWN = 64;
 
     bool is_empty;
-    int known_cnt;
-    int mine_cnt;    //current
-    int mine_number; //total
+    int known_cnt;  // current known
+    int mine_cnt;   // current mine
+    int total_mine; // total mine
     int width, height;
     vector<vector<int>> board;
     vector<Block> next_steps; // click these
@@ -31,8 +31,15 @@ private:
     // whether it has known(not including flag) nearby
     vector<vector<bool>> has_known;
 
+    int border_sum; // # of border blocks
     // store independent partitions of borders
     vector<vector<Block>> border_partition;
+    vector<Block> not_border; // unknown but not border
+    // [i][j]: # of solutions with border[i] and j mines in total
+    vector<vector<long long>> border_cnt;
+    // [i][j][k]: # of solutions with border[i],
+    //  j th block has a mine and k mines in total
+    vector<vector<vector<long long>>> border_block_cnt;
 
     // probability of having MINE
     vector<vector<double>> mine_prob;
@@ -201,13 +208,20 @@ private:
         // find all border blocks
         for (int i = 0; i < height; ++i)
             for (int j = 0; j < width; ++j)
-                if (has_known[i][j] &&
-                    board[i][j] == UNKNOWN)
+                if (board[i][j] == UNKNOWN)
                 {
-                    is_border[i][j] = true;
-                    border_blocks.emplace_back(make_pair(i, j));
+                    if (has_known[i][j])
+                    {
+                        is_border[i][j] = true;
+                        border_blocks.emplace_back(
+                            make_pair(i, j));
+                    }
+                    else
+                        not_border.emplace_back(
+                            make_pair(i, j));
                 }
         // partition connected border
+        border_sum = border_blocks.size();
         for (const auto &it : border_blocks)
             if (is_border[it.first][it.second])
             {
@@ -216,6 +230,7 @@ private:
                 std::sort(border_partition.back().begin(),
                           border_partition.back().end());
             }
+        // may find an empty block or mine quickly
         std::shuffle(border_partition.begin(),
                      border_partition.end(),
                      std::mt19937(time(0)));
@@ -256,31 +271,33 @@ private:
 
     // use dfs to search all feasible solutions
     //  in each border partition
-    // border_partition[blk][k]
-    void dfsBorderMines(int blk, int k,
-                        long long &total)
+    // border_partition[idx][k]
+    void dfsBorderMines(int idx, int k,
+                        int cur_mine)
     {
-        if (k == border_partition[blk].size())
+        if (k == border_partition[idx].size())
         {
-            total++;
+            for (int i = 0; i < k; ++i)
+            {
+                auto it = border_partition[idx][i];
+                if (board[it.first][it.second] == MINE)
+                    border_block_cnt[idx][i][cur_mine]++;
+            }
+            border_cnt[idx][cur_mine]++;
             return;
         }
 
-        Block cur = border_partition[blk][k];
+        Block cur = border_partition[idx][k];
         int x = cur.first;
         int y = cur.second;
 
-        int pre = total;
         board[x][y] = MINE;
         if (isFeasible(x, y)) // feasible prune
-        {
-            dfsBorderMines(blk, k + 1, total);
-            mine_prob[x][y] += total - pre;
-        }
+            dfsBorderMines(idx, k + 1, cur_mine + 1);
 
         board[x][y] = 0;
         if (isFeasible(x, y)) // feasible prune
-            dfsBorderMines(blk, k + 1, total);
+            dfsBorderMines(idx, k + 1, cur_mine);
 
         board[x][y] = UNKNOWN;
     }
@@ -293,30 +310,120 @@ private:
         if (border_partition.empty())
             printWarning("No Border!");
 
-        // calculate probability
-        double avg_prob = (mine_number - mine_cnt) * 1.0 /
-                          (width * height - known_cnt - mine_cnt); // not exact
+        int unknown_mine = total_mine - mine_cnt;
+        double avg_prob = (unknown_mine)*1.0 /
+                          (width * height - known_cnt - mine_cnt); // not precise
         double min_prob = 1;
         double max_prob = 0;
         mine_prob = vector<vector<double>>(height,
                                            vector<double>(width, avg_prob));
+        static const double eps = 1e-8;
+        const int border_threshold = 20;
+        border_block_cnt.clear();
+        border_cnt.clear();
+        // use dfs to find all feasible solutions
+        //  and calculate probability inside each partition
         for (int i = 0; i < border_partition.size(); ++i)
         {
-            long long total = 0;
-            for (const auto &it : border_partition[i])
-                mine_prob[it.first][it.second] = 0;
-            dfsBorderMines(i, 0, total);
+            int cur_size = border_partition[i].size();
+            border_cnt.emplace_back(vector<long long>(cur_size + 1, 0));
+            border_block_cnt.emplace_back(
+                vector<vector<long long>>(cur_size,
+                                          vector<long long>(cur_size + 1, 0)));
 
-            for (const auto &it : border_partition[i])
+            dfsBorderMines(i, 0, 0);
+
+            // calculate probability inside each partition
+            //  we assume each partition is independent here
+            for (int j = 0; j < cur_size; ++j)
             {
-                double prob = mine_prob[it.first][it.second];
+                double prob = 0, total = 0;
+                for (int k = 0; k < cur_size + 1; ++k) // # of mine
+                {
+                    prob += border_block_cnt.back()[j][k];
+                    total += border_cnt.back()[k];
+                }
                 prob /= total;
                 min_prob = min(min_prob, prob);
                 max_prob = max(max_prob, prob);
+                auto it = border_partition[i][j];
                 mine_prob[it.first][it.second] = prob;
             }
+            // I have to admit that
+            //  here goto is easier than a separate function
+            if (min_prob < eps ||
+                std::fabs(1 - max_prob) < eps)
+                goto calcBorderProbFinish;
         }
-        static const double eps = 1e-8;
+        // if we have few remaining border,
+        //  it is not accurate to assume each partition is independent
+        // then, we can use dynamic programing to calculate solutions
+        //  combining different partitions
+        // moreover, here I assume that when # of unknown blocks
+        //  but not border <= threshold, then it is few enough
+        //  to consider dependency
+        if (not_border.size() > border_threshold)
+            return;
+        if (!not_border.empty())
+        {
+            // calculate solutions in not_border
+            border_partition.emplace_back(not_border);
+            int cur_size = not_border.size();
+            border_cnt.emplace_back(vector<long long>(cur_size + 1, 0));
+            border_block_cnt.emplace_back(
+                vector<vector<long long>>(cur_size,
+                                          vector<long long>(cur_size + 1, 0)));
+
+            dfsBorderMines(border_partition.size() - 1,
+                           0, 0);
+        }
+        // calculate conditional probability
+        min_prob = 1, max_prob = 0;
+        for (int i = 0; i < border_partition.size(); ++i)
+        {
+            // f is for dynamic programing
+            // f[i][j]: # of solutions with first i th block
+            //  and j mines in total
+            vector<long long> f(unknown_mine + 1, 0);
+            f[0] = 1;
+
+            for (int T = 0; T < border_partition.size(); ++T)
+                if (i != T)
+                    for (int j = unknown_mine; j >= 0; --j)
+                    {
+                        long long cnt = 0;
+                        for (int k = 0; k <= j; ++k)
+                            if (j - k < border_cnt[T].size())
+                                cnt += f[k] * border_cnt[T][j - k];
+                        f[j] = cnt;
+                    }
+
+            int cur_size = border_partition[i].size();
+
+            for (int j = 0; j < cur_size; ++j)
+            {
+                double prob = 0, total = 0;
+                // when this partition has k mines
+                for (int k = 0; k <= min(unknown_mine, cur_size); ++k)
+                    if (f[unknown_mine - k] != 0)
+                    {
+                        prob += border_block_cnt[i][j][k] *
+                                f[unknown_mine - k];
+                        total += border_cnt[i][k] *
+                                 f[unknown_mine - k];
+                    }
+                prob /= total;
+                min_prob = min(min_prob, prob);
+                max_prob = max(max_prob, prob);
+                auto it = border_partition[i][j];
+                mine_prob[it.first][it.second] = prob;
+
+                if (min_prob < eps ||
+                    std::fabs(1 - max_prob) < eps)
+                    goto calcBorderProbFinish;
+            }
+        }
+    calcBorderProbFinish:
         // some block must not be mine
         if (min_prob < eps)
         {
@@ -349,7 +456,7 @@ public:
         ifstream fin(file_name);
         if (!fin.is_open())
             printError("File Not Found!");
-        fin >> height >> width >> mine_number;
+        fin >> height >> width >> total_mine;
         board = vector<vector<int>>(height,
                                     vector<int>(width, 0));
         has_unknown = vector<vector<bool>>(height,
