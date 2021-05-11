@@ -302,25 +302,23 @@ private:
         board[x][y] = UNKNOWN;
     }
 
-    // calculate probability of having MINE
-    //  on each border block
-    void calcBorderProb()
+    // calculate probability inside each partition
+    //  we assume each partition is independent here
+    void calcLocalProb()
     {
-        divideBorder();
-        if (border_partition.empty())
-            printWarning("No Border!");
+        static const double eps = 1e-8;
+        double min_prob = 1;
+        double max_prob = 0;
 
         int unknown_mine = total_mine - mine_cnt;
         double avg_prob = (unknown_mine)*1.0 /
                           (width * height - known_cnt - mine_cnt); // not precise
-        double min_prob = 1;
-        double max_prob = 0;
         mine_prob = vector<vector<double>>(height,
                                            vector<double>(width, avg_prob));
-        static const double eps = 1e-8;
-        const int border_threshold = 20;
+
         border_block_cnt.clear();
         border_cnt.clear();
+
         // use dfs to find all feasible solutions
         //  and calculate probability inside each partition
         for (int i = 0; i < border_partition.size(); ++i)
@@ -333,12 +331,11 @@ private:
 
             dfsBorderMines(i, 0, 0);
 
-            // calculate probability inside each partition
-            //  we assume each partition is independent here
             for (int j = 0; j < cur_size; ++j)
             {
                 double prob = 0, total = 0;
-                for (int k = 0; k < cur_size + 1; ++k) // # of mine
+                // # of mine in this partition
+                for (int k = 0; k < cur_size + 1; ++k)
                 {
                     prob += border_block_cnt.back()[j][k];
                     total += border_cnt.back()[k];
@@ -349,12 +346,26 @@ private:
                 auto it = border_partition[i][j];
                 mine_prob[it.first][it.second] = prob;
             }
-            // I have to admit that
-            //  here goto is easier than a separate function
+            // find empty block or mine
+            //  return here to avoid further dfs
             if (min_prob < eps ||
                 std::fabs(1 - max_prob) < eps)
-                goto calcBorderProbFinish;
+            {
+                calcProbFinish();
+                return;
+            }
         }
+    }
+
+    // calculate conditional probability
+    //  partitions are not mutually independent
+    void calcGlobalProb()
+    {
+        static const double eps = 1e-8;
+        static const int border_threshold = 20;
+        double min_prob = 1;
+        double max_prob = 0;
+        int unknown_mine = total_mine - mine_cnt;
         // if we have few remaining border,
         //  it is not accurate to assume each partition is independent
         // then, we can use dynamic programing to calculate solutions
@@ -364,9 +375,9 @@ private:
         //  to consider dependency
         if (not_border.size() > border_threshold)
             return;
+        // calculate solutions in not_border
         if (!not_border.empty())
         {
-            // calculate solutions in not_border
             border_partition.emplace_back(not_border);
             int cur_size = not_border.size();
             border_cnt.emplace_back(vector<long long>(cur_size + 1, 0));
@@ -378,7 +389,6 @@ private:
                            0, 0);
         }
         // calculate conditional probability
-        min_prob = 1, max_prob = 0;
         for (int i = 0; i < border_partition.size(); ++i)
         {
             // f is for dynamic programing
@@ -399,7 +409,6 @@ private:
                     }
 
             int cur_size = border_partition[i].size();
-
             for (int j = 0; j < cur_size; ++j)
             {
                 double prob = 0, total = 0;
@@ -417,32 +426,46 @@ private:
                 max_prob = max(max_prob, prob);
                 auto it = border_partition[i][j];
                 mine_prob[it.first][it.second] = prob;
-
-                if (min_prob < eps ||
-                    std::fabs(1 - max_prob) < eps)
-                    goto calcBorderProbFinish;
             }
         }
-    calcBorderProbFinish:
-        // some block must not be mine
-        if (min_prob < eps)
-        {
-            for (const auto &part : border_partition)
-                for (const auto &it : part)
-                    if (mine_prob[it.first][it.second] < eps)
-                        next_steps.push_back(it);
+        // try to find some
+        calcProbFinish();
+    }
+
+    // calculate probability of having MINE
+    //  on each border block
+    void calcBorderProb()
+    {
+        divideBorder();
+        if (border_partition.empty())
+            printWarning("No Border!");
+
+        calcLocalProb();
+        if (!next_steps.empty() ||
+            !next_flags.empty())
+            return;
+
+        calcGlobalProb();
+    }
+
+    // find some empty block or mine
+    void calcProbFinish()
+    {
+        static const double eps = 1e-8;
+
+        for (const auto &part : border_partition)
+            for (const auto &it : part)
+            {
+                double prob = mine_prob[it.first][it.second];
+                if (prob < eps) // must not be mine
+                    next_steps.push_back(it);
+                if (std::fabs(1 - prob) < eps) // must be mine
+                    next_flags.push_back(it);
+            }
+        if (!next_steps.empty())
             printDebug("Find Empty Blocks");
-        }
-        // some block must be mine
-        if (std::fabs(1 - max_prob) < eps)
-        {
-            for (const auto &part : border_partition)
-                for (const auto &it : part)
-                    if (std::fabs(1 -
-                                  mine_prob[it.first][it.second]) < eps)
-                        next_flags.push_back(it);
+        if (!next_flags.empty())
             printDebug("Find Mines");
-        }
     }
 
 public:
