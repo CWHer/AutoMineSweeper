@@ -4,6 +4,10 @@
 
 python前端和C++后端
 
+安装完依赖，调整截图策略后，运行`main.py`即可
+
+![](img/fig-succ.gif)
+
 
 
 ### 版本记录
@@ -68,7 +72,6 @@ python前端和C++后端
   
   前端是`main.py`，可以调用后端接口`solver.exe`
   
-  ![](img/fig-succ.gif)
 
 
 
@@ -101,6 +104,8 @@ python前端和C++后端
 - `flags.txt`
 
   接下来要放的旗子
+  
+  
 
 #### 主要类
 
@@ -118,7 +123,7 @@ python前端和C++后端
 
   - `divideBlock`
 
-    ~~按照顺时针分解边界（没有正确实现）~~
+    ~~按照顺时针分解边界（没有实现，见`counter_example`）~~
 
     本来打算用DP来计数，类似[这个](https://www.luogu.com.cn/problem/P2327)
 
@@ -209,6 +214,8 @@ python前端和C++后端
   ~~鲁棒性不一定好，但很快~~
 
   此外，每次截图后只识别地图上未知的位置
+  
+  
 
 #### 代码文件
 
@@ -224,7 +231,7 @@ python前端和C++后端
 
 - `main.py`
 
-  前端
+  前端，运行这个文件
 
 
 
