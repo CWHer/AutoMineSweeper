@@ -31,15 +31,15 @@ class Board():
             handle = gui.FindWindow(None, "Minesweeper")
             left, up, right, down = gui.GetWindowRect(handle)
 
-            # can not set foreground when debuging
-            # gui.SetForegroundWindow(handle)
+            # can not set foreground when debugging
+            gui.SetForegroundWindow(handle)
 
             positions = (left + LEFT_EDGE, up + UP_EDGE,
                          right, down)
             self.board_img = ImageGrab.grab(positions)
 
             # debug
-            self.board_img.save("cur.png")
+            # self.board_img.save("cur.png")
 
         except Exception as e:
             printError("Terminate in Grab Image with {}"
@@ -48,28 +48,35 @@ class Board():
     # scan a single block
     # a simple but not so robust algorithm
     def __scanBlock(self, i, j, block_img):
-        status = {934: UNKNOWN, 772: UNKNOWN,
+        status = {934: UNKNOWN, 772: UNKNOWN, 658: FLAG,
                   987: 0, 157: 1, 691: 2, 301: 3, 1120: 4,
                   853: 5, 766: 6, 864: 7, 9999: 8,
-                  41: ROUND_FAIL, 627: ROUND_FAIL}
+                  41: ROUND_FAIL, 627: ROUND_FAIL,
+                  217: ROUND_WIN}
+        # 217 means break record
         # ROUND_FAIL is mine
 
-        # 1201 is a prime number
         block_sum = np.sum(block_img) % 1201
+        # 1201 is a prime number
 
         if not block_sum in status:
             block_img.show()
             printError(
                 "Can't Recognize this Block! with block_sum={}"
                 .format(block_sum))
-
         result = status[block_sum]
+
         if result == ROUND_FAIL:
             raise Lose()
-        # if there is no unknown block then we win
-        # if (result == ROUND_WIN
-        #         or result == FLAG):
-        #     raise Win()
+        # if there is no unknown block then we win.
+        # however, as one click dose not always
+        # result in one discover, we may also encounter
+        # flags in the very last search
+        if result == FLAG:
+            raise Win()
+        if result == ROUND_WIN:
+            raise Exception("Breaking Record!")
+
         self.board[i][j] = result
 
     # print board to text file

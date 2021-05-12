@@ -61,13 +61,13 @@ def clickBoard(file_name="steps.txt"):
     handle = gui.FindWindow(None, "Minesweeper")
     left, up, _, _ = gui.GetWindowRect(handle)
 
-    # can not set foreground when debuging
+    # can not set foreground when debugging
     # use a click to do so
-    # gui.SetForegroundWindow(handle)
-    api.SetCursorPos((left+CLICK_OFFSET,
-                      up+CLICK_OFFSET))
-    api.mouse_event(con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-    api.mouse_event(con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    gui.SetForegroundWindow(handle)
+    # api.SetCursorPos((left+CLICK_OFFSET,
+    #                   up+CLICK_OFFSET))
+    # api.mouse_event(con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+    # api.mouse_event(con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
     for i, j in steps:
         x = left + LEFT_EDGE + \
@@ -83,19 +83,20 @@ def clickBoard(file_name="steps.txt"):
 # press F2 and start new game
 def newGame():
     handle = gui.FindWindow(None, "Minesweeper")
-    left, up, _, _ = gui.GetWindowRect(handle)
+    # left, up, _, _ = gui.GetWindowRect(handle)
 
-    # can not set foreground when debuging
-    # gui.SetForegroundWindow(handle)
-    api.SetCursorPos((left+CLICK_OFFSET,
-                      up+CLICK_OFFSET))
-    api.mouse_event(con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-    api.mouse_event(con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    # can not set foreground when debugging
+    gui.SetForegroundWindow(handle)
+    # api.SetCursorPos((left+CLICK_OFFSET,
+    #                   up+CLICK_OFFSET))
+    # api.mouse_event(con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+    # api.mouse_event(con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
     F2_KEYBOARD = 113
     api.keybd_event(F2_KEYBOARD, 0, 0, 0)
     api.keybd_event(F2_KEYBOARD, 0,
                     con.KEYEVENTF_KEYUP, 0)
+    time.sleep(0.02)    # 20ms
 
 
 # test

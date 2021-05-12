@@ -1,13 +1,11 @@
 import os
 
-from numpy.lib.arraysetops import isin
-
 from board import Board
 from settings import *
 from utils import *
 
 win_cnt = 0
-for i in range(1000):
+for i in range(10):
     board = Board()
     try:
         while True:
@@ -27,4 +25,4 @@ for i in range(1000):
         newGame()
 
     print("\r{}/{} {:.2%}".format(win_cnt, i+1,
-                                  win_cnt/(i+1)))
+                                  win_cnt/(i+1)), end="")
