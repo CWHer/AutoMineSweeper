@@ -50,7 +50,7 @@ class Board():
     def __scanBlock(self, i, j, block_img):
         status = {934: UNKNOWN, 772: UNKNOWN, 658: FLAG,
                   987: 0, 157: 1, 691: 2, 301: 3, 1120: 4,
-                  853: 5, 766: 6, 864: 7, 9999: 8,
+                  853: 5, 766: 6, 864: 7, 807: 8,
                   41: ROUND_FAIL, 627: ROUND_FAIL,
                   217: ROUND_WIN}
         # 217 means break record
