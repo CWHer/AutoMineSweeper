@@ -4,7 +4,11 @@
 
 python前端和C++后端
 
-安装完依赖，调整截图策略后，运行`main.py`即可
+安装完依赖，保证截图正确后，运行`main.py`即可
+
+（默认截图策略适用于Win10/1920x1080/100%缩放）
+
+在Win10下正确率一般，大概25%~30%
 
 ![](img/fig-succ.gif)
 
@@ -72,12 +76,13 @@ python前端和C++后端
   
   前端是`main.py`，可以调用后端接口`solver.exe`
   
+  Win10下正确率一般，大概25%~30%
 
 
 
 - [ ] Ver1.1
 
-  优化数字识别
+  优化数字识别的鲁棒性
 
 
 
@@ -211,7 +216,7 @@ python前端和C++后端
 
   截取图片后用基于hash值的精确匹配来判断类型
 
-  ~~鲁棒性不一定好，但很快~~
+  ~~鲁棒性极差，但很快~~
 
   此外，每次截图后只识别地图上未知的位置
   
@@ -241,3 +246,4 @@ python前端和C++后端
 2. [_How to Write your own Minesweeper AI_](https://luckytoilet.wordpress.com/2012/12/23/2125/)
 3. [_CS50 Introduction to Artificial Intelligence with Python_](https://cs50.harvard.edu/ai/2020/projects/1/minesweeper/)
 4. [_I created a PERFECT minesweeper AI_](https://www.youtube.com/watch?v=cGUHehFGqBc)
+
