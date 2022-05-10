@@ -10,7 +10,7 @@ python前端和C++后端
 
 在Win10下正确率一般，大概25%~30%
 
-![](img/fig-succ.gif)
+![](assets/fig-succ.gif)
 
 
 
@@ -136,7 +136,7 @@ python前端和C++后端
 
     最后还是按照连通块划分，然后枚举了
 
-    ![](img/fig-partition.png)
+    ![](assets/fig-partition.png)
 
   - `dfsBorderMines`
 
@@ -170,7 +170,7 @@ python前端和C++后端
   
      当剩余的未知块不多时，块之间并非独立
   
-     ![](img/fig-few.png)
+     ![](assets/fig-few.png)
   
      如果以上情况只剩余一个地雷，则只有一种解
   
