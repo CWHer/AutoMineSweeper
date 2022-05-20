@@ -1,8 +1,8 @@
-# Mine
+# AutoMineSweeper
 
 自动扫雷机
 
-python前端和C++后端
+`Python`前端和`C++`后端
 
 安装完依赖，保证截图正确后，运行`main.py`即可
 
